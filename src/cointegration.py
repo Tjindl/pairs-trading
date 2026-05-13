@@ -1,7 +1,7 @@
 import yfinance as yf
 import pandas as pd
 import numpy as np
-from statsmodels.tsa.stattools import adfuller, coint
+from statsmodels.tsa.stattools import coint
 
 
 def get_price(ticker, start, end):
@@ -11,25 +11,27 @@ def get_price(ticker, start, end):
     return df
 
 
-def test_cointegration(s1, s2, name1, name2):
-    score, p_value, _ = coint(s1, s2)
-    return p_value
-
-
 if __name__ == "__main__":
-    START = "2020-01-01"
+    START = "2022-01-01"
     END = "2024-01-01"
 
-    # Candidate pairs to test
     pairs = [
-        ("KO", "PEP"),      # Beverages
-        ("GLD", "SLV"),     # Gold vs Silver ETFs
-        ("XOM", "CVX"),     # Oil majors
-        ("MA", "V"),        # Payment networks
-        ("MSFT", "GOOGL"),  # Big tech
-        ("JPM", "BAC"),     # Big banks
-        ("WMT", "TGT"),     # Retail
-        ("MCD", "YUM"),     # Fast food
+        # ETF pairs
+        ("SPY", "IVV"),
+        ("GLD", "IAU"),
+        ("XLF", "VFH"),
+        ("QQQ", "ONEQ"),
+        ("XLE", "VDE"),
+        ("XLU", "VPU"),
+        # Equity pairs
+        ("MA", "V"),
+        ("KO", "PEP"),
+        ("XOM", "CVX"),
+        ("JPM", "BAC"),
+        ("COST", "WMT"),   # Warehouse/retail
+        ("AMD", "NVDA"),   # Semiconductors
+        ("UPS", "FDX"),    # Shipping/logistics
+        ("T", "VZ"),       # Telecoms
     ]
 
     print(f"{'Pair':<20} {'P-Value':<12} {'Cointegrated'}")
@@ -39,9 +41,12 @@ if __name__ == "__main__":
         s1 = get_price(t1, START, END)
         s2 = get_price(t2, START, END)
 
-        # Align on common dates
         combined = pd.DataFrame({t1: s1, t2: s2}).dropna()
 
-        p = test_cointegration(combined[t1], combined[t2], t1, t2)
-        cointegrated = "✅ Yes" if p < 0.05 else "❌ No"
-        print(f"{t1+'/'+t2:<20} {p:<12.4f} {cointegrated}")
+        if len(combined) < 100:
+            print(f"{t1+'/'+t2:<20} {'insufficient data':<12}")
+            continue
+
+        score, p_value, _ = coint(combined[t1], combined[t2])
+        cointegrated = "✅ Yes" if p_value < 0.05 else "❌ No"
+        print(f"{t1+'/'+t2:<20} {p_value:<12.4f} {cointegrated}") 

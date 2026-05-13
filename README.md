@@ -218,6 +218,102 @@ python src/backtest.py      # run backtest and print metrics
 
 ---
 
+---
+
+## Research Conclusions
+
+### What We Found
+
+This project went through three distinct phases of research, each revealing something important.
+
+**Phase 1 — Static Backtest (Initial Result)**
+
+Using a hedge ratio calculated over the full 4-year period, the strategy produced impressive results:
+- Total Return: 45.49%
+- Sharpe Ratio: 0.97
+- Beat both benchmarks while being in the market only 16.2% of the time
+
+This looked promising. But there was a fundamental problem.
+
+**Phase 2 — Identifying Look-Ahead Bias**
+
+The static hedge ratio (β = 1.7294) was calculated using all 4 years of data, then applied
+retrospectively to the entire period. On any given trading day in 2020, we couldn't have known
+the beta for the next 4 years. The backtest was unknowingly cheating — using future information
+to make past trades. This is called look-ahead bias and it is one of the most common and
+dangerous errors in quantitative research.
+
+**Phase 3 — Honest Rolling Window Backtest**
+
+Fixing the look-ahead bias by recalculating beta using only historical data available at each
+point in time revealed the true picture:
+
+| Window | Trades | Sharpe | Total Return |
+|--------|--------|--------|--------------|
+| 60 days | 14 | -0.33 | -21.02% |
+| 120 days | 4 | -0.42 | -15.16% |
+| 252 days | 2 | -0.48 | -17.08% |
+
+Every window size loses money. The strategy does not survive rigorous out-of-sample testing.
+
+### Why The Strategy Fails
+
+The MA/V hedge ratio is not stable over time. The rolling beta chart shows it swinging between
+0.7 and 2.8 across the 4-year period — driven by shifting market regimes (COVID crash, 2021
+bull market, 2022 rate hike cycle, 2023 recovery). Each regime changes the relative pricing
+relationship between MA and V in ways a simple OLS regression cannot adapt to quickly enough.
+
+When the hedge ratio is wrong, the spread we calculate is wrong, which means our z-score
+signals are wrong. We end up trading noise instead of genuine mean reversion.
+
+### What This Means
+
+**The cointegration relationship between MA and V is statistically real** — it passes the
+Engle-Granger test consistently across both the 4-year (p=0.0244) and 2-year (p=0.0247)
+windows. The pair is genuinely linked economically: same business model, same customers,
+same regulatory environment.
+
+**But statistical cointegration does not automatically imply profitability.** The relationship
+exists, but our simple threshold-based strategy cannot exploit it reliably once look-ahead
+bias is removed.
+
+This is a common finding in quantitative research. Many statistically significant relationships
+exist in financial markets that cannot be profitably exploited after accounting for:
+- Estimation error in the hedge ratio
+- Transaction costs
+- Regime changes
+- The lag inherent in any causal trading system
+
+### Potential Extensions
+
+A more sophisticated approach might succeed where this one failed:
+
+**Kalman Filter for Dynamic Hedge Ratio**
+Instead of a fixed rolling window, a Kalman filter estimates beta as a continuously updating
+state variable — adapting to regime changes faster and more smoothly than OLS on a fixed window.
+This is the standard approach at professional trading firms for pairs trading.
+
+**Regime Detection**
+Explicitly detect market regimes (using Hidden Markov Models or volatility clustering) and
+only trade when the current regime matches the regime in which cointegration was established.
+
+**Higher Frequency Data**
+The MA/V relationship may be more stable and exploitable at intraday frequency where
+regime shifts matter less. Daily data may simply be too slow to capture the mean reversion
+before it disappears.
+
+**Walk-Forward Optimization**
+Systematically optimize the window size and z-score threshold on a rolling training set,
+then validate on the following out-of-sample period. This would give a more rigorous estimate
+of whether any parameter combination is genuinely robust.
+
+### Final Thought
+
+Finding that a strategy doesn't work is not a failure — it is the expected outcome of
+rigorous quantitative research. The value of this project is not the trading strategy itself
+but the research process: forming a hypothesis, testing it, identifying methodological flaws,
+fixing them, and arriving at an honest conclusion. That process is the job.
+
 ## Dependencies
 
 ```
